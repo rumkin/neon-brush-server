@@ -131,17 +131,58 @@ function __test {
 
   sleep 3
 
+  echo "Add"
   curl \
     -X POST  \
     -H "Content-Type: application/json" \
-    -d '{"id": 1, "method": "Users.Add", "params": [{"name":"user","role":"user", "keys":[{"type":"ed25519", "name":"ssh", "value":"12345678901234567890123456789012"}]}]}' \
+    -H "X-Auth-Type: authenticate" \
+    -H "X-Auth-User: root" \
+    -H "X-Auth-Sign: null" \
+    -H "X-Auth-Verified: 1" \
+    -d '{"id": 1, "method": "Users.Add", "params": [{"name":"root", "role":"admin", "keys":[{"type":"ed25519", "name":"main", "value":"5d0e724fce6c15241b389c1ccee2f7760e5369fbc5e1ec2826ad405fdf49979c"}]}]}' \
     http://localhost:1999/rpc
 
+  echo "Get"
   curl \
     -X POST  \
     -H "Content-Type: application/json" \
-    -d '{"username": "user", "signature": "1234567890", "type":"authenticate"}' \
-    http://localhost:1999/
+    -H "X-Auth-Type: authenticate" \
+    -H "X-Auth-User: root" \
+    -H "X-Auth-Sign: null" \
+    -H "X-Auth-Verified: 1" \
+    -d '{"id": 1, "method": "Users.Get", "params": [{"name":"root"}]}' \
+    http://localhost:1999/rpc
+
+  echo "Delete"
+  curl \
+    -X POST  \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Type: authenticate" \
+    -H "X-Auth-User: root" \
+    -H "X-Auth-Sign: null" \
+    -H "X-Auth-Verified: 1" \
+    -d '{"id": 1, "method": "Users.Delete", "params": [{"name":"root"}]}' \
+    http://localhost:1999/rpc
+
+  echo "Get"
+  curl \
+    -X POST  \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Type: authenticate" \
+    -H "X-Auth-User: root" \
+    -H "X-Auth-Sign: null" \
+    -H "X-Auth-Verified: 1" \
+    -d '{"id": 1, "method": "Users.Get", "params": [{"name":"root"}]}' \
+    http://localhost:1999/rpc
+
+  # echo "Authenticate"
+  # curl \
+  #   -X POST  \
+  #   -H "Content-Type: application/json" \
+  #   -H "X-Auth-User: root" \
+  #   -H "Content-Type: application/json" \
+  #   -d '{"username": "test", "signature": "1234567890", "type":"authenticate"}' \
+  #   http://localhost:1999/
 
   kill -s 9 $PID
 }

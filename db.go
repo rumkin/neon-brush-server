@@ -2,13 +2,15 @@ package main
 
 import (
   // "log"
-  // "errors"
+  "errors"
   "github.com/boltdb/bolt"
+  // "github.com/agl/ed25519"
   "encoding/json"
 )
 
 type Database struct {
   Db *bolt.DB
+  UsersCount int
 }
 
 func OpenDatabase(dbPath string) (*Database, error)  {
@@ -29,6 +31,7 @@ func OpenDatabase(dbPath string) (*Database, error)  {
 
   instance := new(Database)
   instance.Db = db
+  instance.UsersCount = instance.CountUsers()
 
   return instance, nil
 }
@@ -55,7 +58,14 @@ type UserKey struct {
   Value string `json:"value"`
 }
 
+func (user *User) VerifySignature(message []byte, signature[]byte)  {
+
+}
+
 var DefaultUserRole string = "user"
+
+var NotFound error = errors.New("not_found")
+var DataDuplicate error = errors.New("data_duplicate")
 
 func NewUser(name string, role string) (*User) {
   user := new(User)
@@ -81,8 +91,12 @@ func (self *Database) GetUser(name string) (User, error) {
     return nil
   })
 
-  if result == nil || err != nil {
+  if err != nil {
     return user, err
+  }
+
+  if result == nil {
+    return user, NotFound
   }
 
   json.Unmarshal(result, &user)
@@ -91,7 +105,7 @@ func (self *Database) GetUser(name string) (User, error) {
 }
 
 func (self *Database) AddUser(user User) (error) {
-  return self.Db.Update(func(tx *bolt.Tx) error {
+  err := self.Db.Update(func(tx *bolt.Tx) error {
     b := tx.Bucket([]byte("users"))
 
     data, err := json.Marshal(user)
@@ -102,4 +116,66 @@ func (self *Database) AddUser(user User) (error) {
     // TODO Emit error if user already exists
     return b.Put([]byte(user.Name), data)
   })
+
+  if err != nil {
+    return err
+  }
+
+  self.UsersCount += 1
+  return nil
+}
+
+func (self *Database) RemoveUser(username string) error {
+  var count int
+  err := self.Db.Update(func(tx *bolt.Tx) error {
+    b := tx.Bucket([]byte("users"))
+
+    key := []byte(username)
+
+    if b.Get(key) != nil {
+      b.Delete(key)
+      count += 1
+    }
+
+    return nil
+  })
+
+  if err != nil {
+    return err
+  }
+
+  self.UsersCount -= count
+  return nil
+}
+
+func (self *Database) HasUser(name string) (bool) {
+  var result bool
+
+  self.Db.View(func (tx *bolt.Tx) error {
+    bucket := tx.Bucket([]byte("users"))
+    result = (bucket.Get([]byte(name)) == nil)
+
+    return nil
+  })
+
+  return result
+}
+
+// Count users in the database
+func (self * Database) CountUsers() (int) {
+  var count int
+  self.Db.View(func(tx *bolt.Tx) error {
+    // Assume bucket exists and has keys
+    b := tx.Bucket([]byte("users"))
+
+    c := b.Cursor()
+
+    for k, _ := c.First(); k != nil; k, _ = c.Next() {
+        count += 1
+    }
+
+    return nil
+  })
+
+  return count
 }

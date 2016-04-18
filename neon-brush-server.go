@@ -16,102 +16,6 @@ import (
   // "github.com/agl/ed25519"
 )
 
-// var db *bolt.DB
-//
-// type Users struct {
-// }
-//
-// type PutArgs struct {
-//   Name string
-//   PublicKey string
-// }
-//
-// type GetArgs struct {
-//   Name string
-// }
-//
-// func (api *Users) Put(args *PutArgs, result *bool) error {
-//   log.Println("Put");
-//   if len(args.Name) < 1 {
-//     return errors.New("Name is empty")
-//   }
-//
-//   if len(args.PublicKey) != 32  {
-//     return errors.New("PublicKey length should be 32")
-//   }
-//
-//   db.Update(func (tx *bolt.Tx) error {
-//     bucket := tx.Bucket([]byte("users"))
-//
-//     return bucket.Put([]byte(args.Name), []byte(args.PublicKey))
-//   })
-//
-//   *result = true
-//
-//   return nil
-// }
-//
-// func (api *Users) Get(args *GetArgs, result *string) error {
-//   log.Println("Get");
-//   if len(args.Name) < 1 {
-//     return errors.New("Name is empty")
-//   }
-//
-//   db.View(func (tx *bolt.Tx) error {
-//     bucket := tx.Bucket([]byte("users"))
-//
-//     *result = string(bucket.Get([]byte(args.Name)))
-//
-//     return nil
-//   })
-//
-//   return nil
-// }
-
-// func startServer (ctype string, caddr string) {
-//   api := new(Users)
-//
-//   server := rpc.NewServer()
-//   server.Register(api)
-//   // server.HandleHTTP(jsonrpc.)
-//
-//   listener, err := net.Listen(ctype, caddr)
-//
-//   if err != nil {
-//       log.Fatal("listen error:", err)
-//   }
-//
-//   defer listener.Close()
-//
-//   for {
-//       conn, err := listener.Accept()
-//
-//       if err != nil {
-//           log.Fatal(err)
-//       }
-//
-//       go server.ServeCodec(jsonrpc.NewServerCodec(conn))
-//   }
-// }
-//
-// func startClient(ctype string, caddr string) {
-//   conn, err := net.Dial(ctype, caddr)
-//
-//   if err != nil {
-//       panic(err)
-//   }
-//   defer conn.Close()
-//
-//   c := jsonrpc.NewClient(conn)
-//
-//   var reply bool
-//   var args = PutArgs{"user", "12345678901234567890123456789012"}
-//   err = c.Call("Users.Put", args, &reply)
-//   if err != nil {
-//       log.Fatal("arith error:", err)
-//   }
-//   log.Println("msg", reply)
-// }
 type VerifyArgs struct {
   Username string `json:"username"`
   Signature string `json:"signature"`
@@ -175,7 +79,12 @@ func HttpDatabaseHandler(db *Database) (func (http.ResponseWriter, *http.Request
     user, err := db.GetUser(args.Username)
 
     if err != nil {
-      fmt.Fprintf(os.Stderr, "Read error:", err)
+      if err == NotFound {
+          fmt.Fprintf(w, "User not found\n")
+          return
+      }
+
+      fmt.Fprintf(os.Stderr, "Read error:", err.Error())
       fmt.Fprintf(w, "Fail")
       return
     }
