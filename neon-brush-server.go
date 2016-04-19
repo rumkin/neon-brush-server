@@ -132,28 +132,6 @@ func main() {
     connType = "unix"
     connAddr = port
   }
-
-  // var err error
-  // db, err = bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
-  //
-  // if err != nil {
-  //   panic(err)
-  // }
-  //
-  // defer db.Close()
-  //
-  //
-  // db.Update(func(tx *bolt.Tx) error {
-  //   _, err := tx.CreateBucketIfNotExists([]byte("users"))
-  //
-  //   return err
-  // })
-  //
-  // go startServer(connType, connAddr)
-  //
-  // time.Sleep(1 * time.Second)
-  //
-  // startClient(connType, connAddr)
-  // time.Sleep(10 * time.Second)
+  
   startServer(connType, connAddr, dbPath, superUser)
 }
