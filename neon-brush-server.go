@@ -13,14 +13,10 @@ import (
   gJson "github.com/gorilla/rpc/json"
   // "errors"
   // "github.com/boltdb/bolt"
-  // "github.com/agl/ed25519"
+  "github.com/agl/ed25519"
+  // "github.com/agl/ed25519/edwards25519"
 )
 
-type VerifyArgs struct {
-  Username string `json:"username"`
-  Signature string `json:"signature"`
-  Type string `json:"type"`
-}
 
 // startServer Starts http server instance with verification handler
 func startServer(socket string, port string, dbPath string, superUser []string) (error) {
@@ -61,6 +57,12 @@ func startServer(socket string, port string, dbPath string, superUser []string) 
   return nil
 }
 
+type VerifyArgs struct {
+  Username string `json:"username"`
+  Signature string `json:"signature"`
+  Type string `json:"type"`
+}
+
 // Handle
 func HttpDatabaseHandler(db *Database) (func (http.ResponseWriter, *http.Request)) {
   return func (w http.ResponseWriter, req *http.Request){
@@ -87,6 +89,45 @@ func HttpDatabaseHandler(db *Database) (func (http.ResponseWriter, *http.Request
       fmt.Fprintf(os.Stderr, "Read error:", err.Error())
       fmt.Fprintf(w, "Fail")
       return
+    }
+
+    var key UserKey
+    var keyFound bool
+    for _,v := range user.Keys {
+        if (v.Name == args.Type) {
+            key = v
+            keyFound = true
+            break
+        }
+    }
+
+    if keyFound != true {
+        fmt.Fprint(w, "{\"status\": false}")
+        return
+    }
+
+    var publicKey [32]byte
+    var signature [64]byte
+
+    copy(signature[0:64], args.Signature)
+    copy(publicKey[0:32], key.Value)
+
+    verifyData := make(map[string]interface{})
+    verifyData["username"] = args.Username
+    verifyData["type"] = args.Type
+    verifyData["resource"] = req.Header.Get("Referrer")
+
+    hash, err := GenerateHash(verifyData)
+    if err != nil {
+        fmt.Fprint(w, "{\"error\": \"unknown_error\"}")
+        return
+    }
+
+    // keyBytes := make([]byte, 32)
+    // copy(hash[0:32], hashBytes)
+    if (! ed25519.Verify(&publicKey, hash, &signature)) {
+        fmt.Fprint(w, "{\"status\": false}")
+        return
     }
 
     data, err := json.Marshal(user)
@@ -132,6 +173,6 @@ func main() {
     connType = "unix"
     connAddr = port
   }
-  
+
   startServer(connType, connAddr, dbPath, superUser)
 }
